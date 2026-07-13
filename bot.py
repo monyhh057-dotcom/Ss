@@ -2,11 +2,10 @@ import os
 import telebot
 import requests
 
-# جلب التوكنات بأمان من إعدادات Railway (وليس كتابتها هنا)
+# جلب التوكنات بأمان من إعدادات Railway التي قمت بضبطها مسبقاً
 BOT_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 AI_API_KEY = os.environ.get('AI_API_KEY')
 
-# التحقق من وجود المتغيرات
 if not BOT_TOKEN or not AI_API_KEY:
     raise ValueError("⚠️ خطأ: تأكد من إضافة TELEGRAM_TOKEN و AI_API_KEY في إعدادات Railway!")
 
@@ -23,21 +22,21 @@ def handle_message(message):
     # إظهار حالة "يكتب الآن..." في التيليجرام
     bot.send_chat_action(message.chat.id, 'typing')
     
-    # رابط الـ API الخاص بنموذج فيبل (تأكد من تعديل الرابط إذا كان مختلفاً في توثيقهم الرسمي)
-    # غالباً ما تكون النماذج متوافقة مع صيغة OpenAI أو لها مسار خاص مثل /v1/chat/completions
-    api_url = "https://api.vable.ai/v1/chat/completions" 
+    # الرابط الصحيح الموحد لمنصة inference.sh
+    api_url = "https://api.inference.sh/apps/run"
     
     headers = {
         "Authorization": f"Bearer {AI_API_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "X-API-Version": "2"
     }
     
-    # الهيكل القياسي لإرسال الطلب للذكاء الاصطناعي
+    # لقد اخترت لك هنا نموذج (Kimi K2 Thinking) وهو ممتاز جداً ومتاح في حسابك
     payload = {
-        "model": "vable-model", # اسم النموذج الافتراضي
-        "messages": [
-            {"role": "user", "content": user_text}
-        ]
+        "app": "openrouter/kimi-k2-thinking", 
+        "input": {
+            "text": user_text
+        }
     }
     
     try:
@@ -45,17 +44,20 @@ def handle_message(message):
         
         if response.status_code == 200:
             data = response.json()
-            # استخراج رد الذكاء الاصطناعي (تلقائياً حسب الصيغ المشهورة)
-            ai_response = data['choices'][0]['message']['content']
-            bot.reply_to(message, ai_response)
-        else:
-            # إذا فشل، نحاول فحص إذا كانت صيغة البيانات مختلفة
-            try:
-                data = response.json()
-                ai_response = data.get('reply') or data.get('response') or f"حدث خطأ في الرد من السيرفر: {response.status_code}"
+            
+            # استخراج رد الذكاء الاصطناعي حسب طريقة عرض منصة inference
+            output = data.get("output", "")
+            if isinstance(output, dict):
+                ai_response = output.get("text", str(output))
+            else:
+                ai_response = str(output)
+            
+            if ai_response.strip():
                 bot.reply_to(message, ai_response)
-            except:
-                bot.reply_to(message, f"❌ واجهت مشكلة في الاتصال بالذكاء الاصطناعي. رمز الخطأ: {response.status_code}")
+            else:
+                bot.reply_to(message, "⚠️ استلمت رداً فارغاً من الذكاء الاصطناعي.")
+        else:
+            bot.reply_to(message, f"❌ واجهت مشكلة في الاتصال. رمز الخطأ: {response.status_code}")
                 
     except Exception as e:
         bot.reply_to(message, f"⚠️ حدث خطأ غير متوقع في النظام: {str(e)}")
@@ -63,4 +65,4 @@ def handle_message(message):
 if __name__ == "__main__":
     print("البوت يعمل الآن بنجاح...")
     bot.infinity_polling()
-  
+    
