@@ -85,14 +85,26 @@ def send_telegram_photo(game_id, name, players, icon_url):
         print(f"[warn] failed to send for {game_id}: {r.text}")
 
 
+INITIAL_SEND_COUNT = int(os.environ.get("INITIAL_SEND_COUNT", "10"))
+
+
 def main():
     known_ids = load_known_ids()
 
     if known_ids is None:
-        # First run ever: just capture the current state, don't spam
-        # the channel with every existing game.
+        # First run ever: send a small test batch so you can confirm
+        # everything works, then mark everything as known.
         games = fetch_games()
-        known_ids = set(games.keys())
+        game_ids = list(games.keys())
+
+        sample_ids = game_ids[:INITIAL_SEND_COUNT]
+        print(f"[init] first run detected, sending {len(sample_ids)} games as a test batch")
+        for gid in sample_ids:
+            name, players, icon = games[gid]
+            print(f"[init-send] {name} ({gid})")
+            send_telegram_photo(gid, name, players, icon)
+
+        known_ids = set(game_ids)
         save_known_ids(known_ids)
         print(f"[init] captured {len(known_ids)} existing games, will only report new ones from now on")
 
