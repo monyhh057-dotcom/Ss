@@ -142,6 +142,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🔥 WormGPT Bot جاهز.\nأرسل أي شيء تبيه.")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text
     add_message(user_id, "user", text)
@@ -151,11 +152,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         response = call_groq(messages, tools=[SEARCH_TOOL])
-        reply = response.get("content") or "ما قدرت أرد حالياً."
+        
+        # التعامل الصحيح مع الرد
+        if response.get("content"):
+            reply = response["content"]
+        elif response.get("tool_calls"):
+            reply = "⏳ جاري البحث في Rolimons..."
+            # هنا تقدر تضيف معالجة الـ tool_calls لاحقاً
+        else:
+            reply = "ما قدرت أفهم طلبك حالياً، جرب مرة ثانية."
+
         add_message(user_id, "assistant", reply)
         await update.message.reply_text(reply)
+
     except Exception as e:
-        await update.message.reply_text(f"❌ خطأ: {e}")
+        log.error(f"Error in handle_message: {e}")
+        await update.message.reply_text(f"❌ حصل خطأ: {str(e)[:200]}")
 
 def main():
     init_db()
