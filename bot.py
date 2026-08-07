@@ -1,4 +1,4 @@
-```python
+#python
 # bot.py - WormGPT Edition (Enhanced)
 
 import os
