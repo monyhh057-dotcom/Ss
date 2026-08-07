@@ -1,4 +1,5 @@
-# bot.py - WormGPT Edition (Fixed)
+```python
+# bot.py - WormGPT Edition (Enhanced)
 
 import os
 import logging
@@ -6,6 +7,7 @@ import sqlite3
 import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
+from datetime import datetime
 
 try:
     from self_improve import cmd_self_improve
@@ -103,6 +105,31 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         log.error(f"Error: {e}")
         await update.message.reply_text(f"خطأ: {str(e)[:150]}")
 
+async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM chat_history")
+        count = c.fetchone()[0]
+        conn.close()
+        await update.message.reply_text(f"عدد الرسائل: {count}")
+    except:
+        await update.message.reply_text("خطأ في الحصول على الإحصائيات.")
+
+async def top_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT user_id, COUNT(*) FROM chat_history GROUP BY user_id ORDER BY COUNT(*) DESC LIMIT 10")
+        users = c.fetchall()
+        conn.close()
+        reply = "أهم 10 مستخدمين:\n"
+        for user_id, count in users:
+            reply += f"- {user_id}: {count} رسائل\n"
+        await update.message.reply_text(reply)
+    except:
+        await update.message.reply_text("خطأ في الحصول على الإحصائيات.")
+
 def main():
     init_db()
     app = Application.builder().token(TELEGRAM_TOKEN).build()
@@ -110,6 +137,8 @@ def main():
     app.add_handler(CommandHandler("start", start))
     if AUTO_IMPROVE_ENABLED:
         app.add_handler(CommandHandler("self_improve", cmd_self_improve))
+    app.add_handler(CommandHandler("stats", stats))
+    app.add_handler(CommandHandler("top_users", top_users))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     log.info("Bot starting...")
@@ -117,3 +146,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+```
